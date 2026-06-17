@@ -1,6 +1,6 @@
 # SABE - Sistema de Auditoria Baseado em Evidências
 
-![logo](blob:https://gemini.google.com/b2abdd52-4847-4141-86f7-57f9d9bda7e7)
+![logo](https://drive.google.com/file/d/1CQr_v1SPwSG49IQODXhbdFFRDEMETW-b/view?usp=sharing)
 
 Sistema corporativo destinado ao **Tribunal de Contas do Estado de Roraima (TCE-RR)** para gestão de auditorias, documentos, evidências, achados e produção de relatórios técnicos.
 
