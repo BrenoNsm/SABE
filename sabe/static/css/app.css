@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+@theme {
+    --color-tce-blue: #003366;
+    --color-tce-gold: #C9A84C;
+}
+
+/* Form inputs */
+input[type="text"], input[type="password"], input[type="email"], input[type="number"], input[type="date"], input[type="file"], select, textarea {
+    @apply w-full px-3 py-2 border border-gray-300 rounded-lg text-sm;
+}
+input[type="text"]:focus, input[type="password"]:focus, input[type="email"]:focus, input[type="number"]:focus, input[type="date"]:focus, select:focus, textarea:focus {
+    @apply ring-2 ring-blue-500 border-blue-500 outline-none;
+}
+
+/* Buttons */
+.btn-primary {
+    @apply bg-tce-blue text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-800 transition;
+}
+.btn-danger {
+    @apply bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700 transition;
+}
+.btn-secondary {
+    @apply bg-gray-200 text-gray-800 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-300 transition;
+}

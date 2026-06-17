@@ -1,0 +1,22 @@
+{
+  "name": "sabe",
+  "version": "1.0.0",
+  "description": "Sistema corporativo destinado ao **Tribunal de Contas do Estado de Roraima (TCE-RR)** para gestão de auditorias, documentos, evidências, achados e produção de relatórios técnicos.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "build:css": "tailwindcss -i sabe/static/css/app.css -o sabe/static/css/output.css",
+    "watch:css": "tailwindcss -i sabe/static/css/app.css -o sabe/static/css/output.css --watch",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@tailwindcss/cli": "^4.3.1",
+    "tailwindcss": "^4.3.1"
+  }
+}

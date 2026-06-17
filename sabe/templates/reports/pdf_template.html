@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page {
+            size: a4;
+            margin: 2.5cm 2cm 2cm 2cm;
+        }
+        body {
+            font-family: 'Helvetica', sans-serif;
+            font-size: 11pt;
+            line-height: 1.5;
+            color: #333;
+        }
+        .cover-page {
+            text-align: center;
+            padding-top: 200px;
+        }
+        .cover-page h1 {
+            font-size: 18pt;
+            color: #003366;
+            margin-bottom: 5px;
+        }
+        .cover-page h2 {
+            font-size: 14pt;
+            color: #003366;
+            font-weight: normal;
+            margin-bottom: 30px;
+        }
+        .cover-page h3 {
+            font-size: 16pt;
+            margin-bottom: 20px;
+        }
+        .cover-page .info {
+            font-size: 12pt;
+            line-height: 2;
+        }
+        h1 { font-size: 14pt; color: #003366; border-bottom: 2px solid #C9A84C; padding-bottom: 5px; margin-top: 30px; }
+        h2 { font-size: 12pt; color: #003366; margin-top: 20px; }
+        h3 { font-size: 11pt; color: #003366; margin-top: 15px; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; font-size: 10pt; }
+        th { background-color: #003366; color: white; }
+        .classification { padding: 2px 8px; font-size: 9pt; font-weight: bold; }
+        .critical { color: #dc3545; }
+        .high { color: #fd7e14; }
+        .medium { color: #b8860b; }
+        .low { color: #28a745; }
+        .evidence-box { background: #f8f9fa; border-left: 3px solid #003366; padding: 8px 12px; margin: 8px 0; font-size: 10pt; }
+        .page-break { page-break-before: always; }
+        .toc { margin: 20px 0; }
+        .footer-text { font-size: 8pt; color: #999; text-align: center; margin-top: 50px; }
+        #header { text-align: center; font-size: 9pt; color: #003366; font-weight: bold; padding: 10px 0; }
+        #footer { text-align: center; font-size: 8pt; color: #666; padding: 5px 0; }
+    </style>
+</head>
+<body>
+
+<pdf:header>
+    <div id="header">TRIBUNAL DE CONTAS DO ESTADO DE RORAIMA</div>
+</pdf:header>
+
+<pdf:footer>
+    <div id="footer">Página <pdf:pagenumber /> de <pdf:pagecount /></div>
+</pdf:footer>
+
+<div class="cover-page">
+    <h1>TRIBUNAL DE CONTAS DO ESTADO DE RORAIMA</h1>
+    <h2>SISTEMA DE AUDITORIA BASEADO EM EVIDÊNCIAS</h2>
+    <h3>RELATÓRIO DE AUDITORIA</h3>
+    <div class="info">
+        <p><strong>Auditoria:</strong> {{ audit.numero }}/{{ audit.exercicio }}</p>
+        <p><strong>Unidade Jurisdicionada:</strong> {{ audit.unidade_jurisdicionada }}</p>
+        <p><strong>Responsável:</strong> {{ audit.responsavel }}</p>
+        <p><strong>Processo:</strong> {{ audit.processo|default:"n/a" }}</p>
+        <p><strong>Data de Emissão:</strong> {{ generated_at }}</p>
+    </div>
+</div>
+
+<div class="page-break">
+    <h1>SUMÁRIO</h1>
+    <div class="toc">
+        <p>1. Introdução</p>
+        <p>2. Escopo</p>
+        <p>3. Metodologia</p>
+        <p>4. Achados de Auditoria</p>
+        <p>5. Evidências</p>
+        <p>6. Fundamentação Legal</p>
+        <p>7. Conclusão</p>
+        <p>8. Recomendações</p>
+    </div>
+</div>
+
+<div class="page-break">
+    <h1>1. INTRODUÇÃO</h1>
+    <p>O presente relatório apresenta os resultados da auditoria realizada no âmbito do Tribunal de Contas do Estado de Roraima, referente ao processo {{ audit.processo|default:"n/a" }}.</p>
+    <p><strong>Período da auditoria:</strong> {{ audit.data_inicio|date:"d/m/Y" }} a {{ audit.data_encerramento|date:"d/m/Y"|default:"em andamento" }}</p>
+    <p><strong>Objeto:</strong> {{ audit.objeto }}</p>
+
+    <h1>2. ESCOPO</h1>
+    <p>A auditoria abrangeu a unidade jurisdicionada {{ audit.unidade_jurisdicionada }}, tendo como responsável {{ audit.responsavel }}.</p>
+    <p>Foram analisados {{ audit.documents.count }} documentos e identificados {{ audit.findings.count }} achados de auditoria.</p>
+
+    <h1>3. METODOLOGIA</h1>
+    <p>A metodologia adotada compreendeu as seguintes etapas:</p>
+    <ul>
+        <li>Análise documental com suporte de OCR e extração de texto;</li>
+        <li>Identificação e registro de evidências;</li>
+        <li>Classificação de achados segundo critérios de materialidade e relevância;</li>
+        <li>Vinculação de fundamentação legal;</li>
+        <li>Elaboração de recomendações.</li>
+    </ul>
+</div>
+
+<div class="page-break">
+    <h1>4. ACHADOS DE AUDITORIA</h1>
+    {% for finding in findings %}
+    <h2>{{ forloop.counter }}. {{ finding.title }}</h2>
+    <p><span class="classification {{ finding.classificacao }}">{{ finding.get_classificacao_display }}</span></p>
+    {% if finding.description %}<p><strong>Descrição:</strong> {{ finding.description }}</p>{% endif %}
+    {% if finding.criterio %}<p><strong>Critério:</strong> {{ finding.criterio }}</p>{% endif %}
+    {% if finding.condicao %}<p><strong>Condição encontrada:</strong> {{ finding.condicao }}</p>{% endif %}
+    {% if finding.causa %}<p><strong>Causa:</strong> {{ finding.causa }}</p>{% endif %}
+    {% if finding.efeito %}<p><strong>Efeito:</strong> {{ finding.efeito }}</p>{% endif %}
+    {% if finding.recomendacao %}<p><strong>Recomendação:</strong> {{ finding.recomendacao }}</p>{% endif %}
+    {% endfor %}
+</div>
+
+<div class="page-break">
+    <h1>5. EVIDÊNCIAS</h1>
+    {% for finding in findings %}
+    <h2>{{ finding.title }}</h2>
+    {% for evidence in finding.evidences.all %}
+    <div class="evidence-box">
+        <p><strong>Documento:</strong> {{ evidence.document.original_filename }}</p>
+        <p><strong>Página:</strong> {{ evidence.page_number }}</p>
+        <p><strong>Texto:</strong> {{ evidence.captured_text }}</p>
+    </div>
+    {% empty %}
+    <p>Nenhuma evidência registrada para este achado.</p>
+    {% endfor %}
+    {% endfor %}
+</div>
+
+<div class="page-break">
+    <h1>6. FUNDAMENTAÇÃO LEGAL</h1>
+    {% for finding in findings %}
+    {% with lfs=finding.legal_frameworks.all %}
+    {% if lfs %}
+    <h2>{{ finding.title }}</h2>
+    {% for lf in lfs %}
+    <h3>{{ lf.legal_framework.tipo_display }} - {{ lf.legal_framework.numero }}</h3>
+    {% if lf.legal_framework.ementa %}
+    <p><strong>Ementa:</strong> {{ lf.legal_framework.ementa }}</p>
+    {% endif %}
+    {% if lf.legal_framework.texto %}
+    <p><strong>Texto:</strong> {{ lf.legal_framework.texto }}</p>
+    {% endif %}
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+    {% endfor %}
+    {% if not findings %}
+    <p>Nenhuma fundamentação legal vinculada aos achados.</p>
+    {% endif %}
+</div>
+
+<div class="page-break">
+    <h1>7. CONCLUSÃO</h1>
+    <p>Foram realizadas as análises pertinentes no âmbito da auditoria {{ audit.numero }}/{{ audit.exercicio }}, tendo sido identificados {{ audit.findings.count }} achados, suportados por evidências documentais devidamente registradas e preservadas.</p>
+    {% if audit.observacoes %}
+    <p><strong>Observações:</strong> {{ audit.observacoes }}</p>
+    {% endif %}
+
+    <h1>8. RECOMENDAÇÕES</h1>
+    {% for finding in findings %}
+    {% if finding.recomendacao %}
+    <p><strong>{{ forloop.counter }}.</strong> {{ finding.recomendacao }}</p>
+    {% endif %}
+    {% endfor %}
+    {% if not findings %}
+    <p>Nenhuma recomendação registrada.</p>
+    {% endif %}
+</div>
+
+<div class="footer-text">
+    <p>Documento gerado pelo SABE - Sistema de Auditoria Baseado em Evidências</p>
+    <p>Tribunal de Contas do Estado de Roraima - {{ generated_at }}</p>
+</div>
+
+</body>
+</html>

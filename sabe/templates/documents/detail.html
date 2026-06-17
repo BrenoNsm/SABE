@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Detalhes do Documento - SABE{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-2xl font-bold text-gray-800">{{ doc.original_filename }}</h1>
+    <p class="text-gray-600 text-sm">Auditoria: <a href="{% url 'audit:detail' doc.audit.pk %}" class="text-blue-600">{{ doc.audit.numero }}/{{ doc.audit.exercicio }}</a></p>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-lg font-semibold text-gray-700 mb-4">Informações do Documento</h2>
+        <dl class="space-y-3 text-sm">
+            <div class="flex justify-between">
+                <dt class="text-gray-500">Tamanho:</dt>
+                <dd class="font-medium">{{ doc.file_size|filesizeformat }}</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-gray-500">Páginas:</dt>
+                <dd class="font-medium">{{ doc.page_count }}</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-gray-500">SHA-256:</dt>
+                <dd class="font-medium text-xs font-mono">{{ doc.sha256_hash|truncatechars:32 }}</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-gray-500">OCR:</dt>
+                <dd><span class="px-2 py-1 rounded-full text-xs font-medium {% if doc.ocr_status == 'completed' or doc.ocr_status == 'not_needed' %}bg-green-100 text-green-800{% elif doc.ocr_status == 'failed' %}bg-red-100 text-red-800{% else %}bg-yellow-100 text-yellow-800{% endif %}">{{ doc.get_ocr_status_display }}</span></dd>
+            </div>
+        </dl>
+    </div>
+    <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-lg font-semibold text-gray-700 mb-4">Ações</h2>
+        <div class="space-y-2">
+            <a href="{{ doc.file.url }}" target="_blank" class="block w-full text-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition text-sm">Download</a>
+            <a href="{% url 'documents:viewer' doc.pk %}" target="_blank" class="block w-full text-center bg-tce-blue text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition text-sm">Visualizar</a>
+            <form method="post" action="{% url 'documents:process' doc.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="block w-full text-center bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition text-sm">Reprocessar OCR</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% if doc.extracted_text %}
+<div class="bg-white rounded-lg shadow p-6 mt-6">
+    <h2 class="text-lg font-semibold text-gray-700 mb-4">Texto Extraído</h2>
+    <pre class="text-xs text-gray-700 whitespace-pre-wrap max-h-96 overflow-y-auto bg-gray-50 p-4 rounded">{{ doc.extracted_text|truncatechars:5000 }}</pre>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% block title %}Detalhes da Auditoria - SABE{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex justify-between items-start">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-800">{{ audit.numero }}/{{ audit.exercicio }}</h1>
+        <p class="text-gray-600">{{ audit.unidade_jurisdicionada }}</p>
+    </div>
+    <div class="flex gap-2">
+        {% if audit.status == 'active' %}
+        <form method="post" action="{% url 'audit:close' audit.pk %}" class="inline">
+            {% csrf_token %}
+            <button type="submit" class="bg-yellow-600 text-white px-3 py-2 rounded-lg hover:bg-yellow-700 transition text-sm"
+                    onclick="return confirm('Encerrar esta auditoria?')">
+                Encerrar
+            </button>
+        </form>
+        {% endif %}
+        <a href="{% url 'audit:update' audit.pk %}" class="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition text-sm">Editar</a>
+        <form method="post" action="{% url 'audit:duplicate' audit.pk %}" class="inline">
+            {% csrf_token %}
+            <button type="submit" class="bg-gray-600 text-white px-3 py-2 rounded-lg hover:bg-gray-700 transition text-sm">Duplicar</button>
+        </form>
+        <a href="{% url 'audit:delete' audit.pk %}" class="bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 transition text-sm">Excluir</a>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+    <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-lg font-semibold text-gray-700 mb-4">Informações</h2>
+        <dl class="space-y-3 text-sm">
+            <div class="flex justify-between">
+                <dt class="text-gray-500">Processo:</dt>
+                <dd class="font-medium">{{ audit.processo|default:"-" }}</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-gray-500">Responsável:</dt>
+                <dd class="font-medium">{{ audit.responsavel }}</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-gray-500">Data Início:</dt>
+                <dd class="font-medium">{{ audit.data_inicio|date:"d/m/Y" }}</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-gray-500">Data Encerramento:</dt>
+                <dd class="font-medium">{{ audit.data_encerramento|date:"d/m/Y"|default:"-" }}</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-gray-500">Status:</dt>
+                <dd><span class="px-2 py-1 rounded-full text-xs font-medium {% if audit.status == 'active' %}bg-green-100 text-green-800{% else %}bg-gray-100 text-gray-800{% endif %}">{{ audit.get_status_display }}</span></dd>
+            </div>
+        </dl>
+        {% if audit.observacoes %}
+        <div class="mt-4">
+            <h3 class="text-sm text-gray-500 mb-1">Observações:</h3>
+            <p class="text-sm text-gray-700">{{ audit.observacoes }}</p>
+        </div>
+        {% endif %}
+        <div class="mt-4 text-xs text-gray-400">
+            Criado por: {{ audit.created_by.get_full_name|default:audit.created_by.username }} em {{ audit.created_at|date:"d/m/Y H:i" }}
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-lg font-semibold text-gray-700 mb-4">Objeto</h2>
+        <p class="text-sm text-gray-700">{{ audit.objeto }}</p>
+    </div>
+</div>
+
+<div class="bg-white rounded-lg shadow p-6 mb-8">
+    <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg font-semibold text-gray-700">Documentos</h2>
+        <a href="{% url 'documents:upload' audit.pk %}" class="bg-tce-blue text-white px-3 py-2 rounded-lg hover:bg-blue-800 transition text-sm">
+            + Upload PDF
+        </a>
+    </div>
+    {% if documents %}
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-gray-600 uppercase text-xs">
+                <tr>
+                    <th class="px-4 py-3 text-left">Arquivo</th>
+                    <th class="px-4 py-3 text-center">Páginas</th>
+                    <th class="px-4 py-3 text-center">OCR</th>
+                    <th class="px-4 py-3 text-center">Envio</th>
+                    <th class="px-4 py-3 text-center">Ações</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                {% for doc in documents %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-3">{{ doc.original_filename }}</td>
+                    <td class="px-4 py-3 text-center">{{ doc.page_count }}</td>
+                    <td class="px-4 py-3 text-center">
+                        <span class="px-2 py-1 rounded-full text-xs font-medium
+                            {% if doc.ocr_status == 'completed' or doc.ocr_status == 'not_needed' %}bg-green-100 text-green-800
+                            {% elif doc.ocr_status == 'processing' %}bg-yellow-100 text-yellow-800
+                            {% elif doc.ocr_status == 'failed' %}bg-red-100 text-red-800
+                            {% else %}bg-gray-100 text-gray-800{% endif %}">
+                            {{ doc.get_ocr_status_display }}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-center text-xs">{{ doc.uploaded_at|date:"d/m/Y H:i" }}</td>
+                    <td class="px-4 py-3 text-center space-x-1">
+                        <a href="{% url 'documents:viewer' doc.pk %}" class="text-blue-600 hover:text-blue-800 text-xs" target="_blank">Visualizar</a>
+                        <form method="post" action="{% url 'documents:process' doc.pk %}" class="inline">
+                            {% csrf_token %}
+                            <button type="submit" class="text-yellow-600 hover:text-yellow-800 text-xs">Reprocessar</button>
+                        </form>
+                        <a href="{% url 'documents:delete' doc.pk %}" class="text-red-600 hover:text-red-800 text-xs">Excluir</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-gray-500 text-sm py-4">Nenhum documento enviado.</p>
+    {% endif %}
+</div>
+
+<div class="bg-white rounded-lg shadow p-6 mb-8">
+    <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg font-semibold text-gray-700">Achados</h2>
+        <a href="{% url 'findings:create' audit.pk %}" class="bg-tce-blue text-white px-3 py-2 rounded-lg hover:bg-blue-800 transition text-sm">
+            + Novo Achado
+        </a>
+    </div>
+    {% if findings %}
+    <div class="space-y-3">
+        {% for finding in findings %}
+        <div class="border rounded-lg p-4 hover:bg-gray-50">
+            <div class="flex justify-between items-start">
+                <div>
+                    <a href="{% url 'findings:detail' finding.pk %}" class="font-medium text-blue-700 hover:text-blue-900">{{ finding.title }}</a>
+                    <p class="text-xs text-gray-500 mt-1">{{ finding.description|truncatechars:200 }}</p>
+                </div>
+                <span class="px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap
+                    {% if finding.classificacao == 'critical' %}bg-red-100 text-red-800
+                    {% elif finding.classificacao == 'high' %}bg-orange-100 text-orange-800
+                    {% elif finding.classificacao == 'medium' %}bg-yellow-100 text-yellow-800
+                    {% else %}bg-green-100 text-green-800{% endif %}">
+                    {{ finding.get_classificacao_display }}
+                </span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-gray-500 text-sm py-4">Nenhum achado registrado.</p>
+    {% endif %}
+</div>
+
+<div class="bg-white rounded-lg shadow p-6 mb-8">
+    <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg font-semibold text-gray-700">Relatórios</h2>
+        <div class="flex gap-2">
+            <form method="post" action="{% url 'reports:generate' audit.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="format" value="docx">
+                <button type="submit" class="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 transition text-sm">Gerar DOCX</button>
+            </form>
+            <form method="post" action="{% url 'reports:generate' audit.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="format" value="pdf">
+                <button type="submit" class="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 transition text-sm">Gerar PDF</button>
+            </form>
+        </div>
+    </div>
+    {% if reports %}
+    <div class="space-y-2">
+        {% for report in reports %}
+        <div class="flex justify-between items-center border rounded p-3">
+            <div>
+                <span class="font-medium text-sm">{{ report.title }}</span>
+                <span class="text-xs text-gray-500 ml-2">{{ report.get_format_display }} - {{ report.generated_at|date:"d/m/Y H:i" }}</span>
+            </div>
+            <div class="flex gap-2">
+                <a href="{% url 'reports:download' report.pk %}" class="text-blue-600 hover:text-blue-800 text-sm">Download</a>
+                <a href="{% url 'reports:delete' report.pk %}" class="text-red-600 hover:text-red-800 text-sm">Excluir</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-gray-500 text-sm py-4">Nenhum relatório gerado.</p>
+    {% endif %}
+</div>
+{% endblock %}

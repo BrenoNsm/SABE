@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Logs de Auditoria - SABE{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold text-gray-800 mb-6">Logs de Auditoria</h1>
+
+<form method="get" class="mb-6 flex gap-4">
+    <select name="action" class="px-4 py-2 border border-gray-300 rounded-lg text-sm">
+        <option value="">Todas as ações</option>
+        <option value="login" {% if request.GET.action == 'login' %}selected{% endif %}>Login</option>
+        <option value="logout" {% if request.GET.action == 'logout' %}selected{% endif %}>Logout</option>
+        <option value="upload" {% if request.GET.action == 'upload' %}selected{% endif %}>Upload</option>
+        <option value="create" {% if request.GET.action == 'create' %}selected{% endif %}>Criação</option>
+        <option value="update" {% if request.GET.action == 'update' %}selected{% endif %}>Alteração</option>
+        <option value="delete" {% if request.GET.action == 'delete' %}selected{% endif %}>Exclusão</option>
+        <option value="report" {% if request.GET.action == 'report' %}selected{% endif %}>Relatório</option>
+    </select>
+    <button type="submit" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition text-sm">Filtrar</button>
+</form>
+
+<div class="bg-white rounded-lg shadow overflow-hidden">
+    <table class="w-full text-sm">
+        <thead class="bg-gray-50 text-gray-600 uppercase text-xs">
+            <tr>
+                <th class="px-4 py-3 text-left">Data/Hora</th>
+                <th class="px-4 py-3 text-left">Usuário</th>
+                <th class="px-4 py-3 text-center">Ação</th>
+                <th class="px-4 py-3 text-left">Detalhes</th>
+                <th class="px-4 py-3 text-center">IP</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+            {% for log in logs %}
+            <tr class="hover:bg-gray-50">
+                <td class="px-4 py-3 text-xs">{{ log.created_at|date:"d/m/Y H:i:s" }}</td>
+                <td class="px-4 py-3">{{ log.user.username|default:"Sistema" }}</td>
+                <td class="px-4 py-3 text-center">
+                    <span class="px-2 py-1 rounded-full text-xs font-medium
+                        {% if log.action == 'login' or log.action == 'logout' %}bg-gray-100 text-gray-800
+                        {% elif log.action == 'create' or log.action == 'upload' %}bg-green-100 text-green-800
+                        {% elif log.action == 'update' %}bg-blue-100 text-blue-800
+                        {% elif log.action == 'delete' %}bg-red-100 text-red-800
+                        {% elif log.action == 'report' %}bg-purple-100 text-purple-800
+                        {% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                        {{ log.get_action_display }}
+                    </span>
+                </td>
+                <td class="px-4 py-3 text-xs text-gray-600">{{ log.details|truncatechars:100 }}</td>
+                <td class="px-4 py-3 text-center text-xs">{{ log.ip_address|default:"-" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="px-4 py-8 text-center text-gray-500">Nenhum log encontrado.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if page_obj.has_other_pages %}
+<div class="mt-4 flex justify-center gap-2">
+    {% if page_obj.has_previous %}
+    <a href="?page={{ page_obj.previous_page_number }}&action={{ request.GET.action|default:'' }}"
+       class="px-3 py-1 bg-gray-200 rounded text-sm hover:bg-gray-300">Anterior</a>
+    {% endif %}
+    <span class="px-3 py-1 text-sm text-gray-600">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}&action={{ request.GET.action|default:'' }}"
+       class="px-3 py-1 bg-gray-200 rounded text-sm hover:bg-gray-300">Próxima</a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}{{ finding.title }} - SABE{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex justify-between items-start">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-800">{{ finding.title }}</h1>
+        <p class="text-gray-600 text-sm">Auditoria: <a href="{% url 'audit:detail' finding.audit.pk %}" class="text-blue-600">{{ finding.audit.numero }}/{{ finding.audit.exercicio }}</a></p>
+    </div>
+    <div class="flex gap-2">
+        <a href="{% url 'findings:update' finding.pk %}" class="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition text-sm">Editar</a>
+        <a href="{% url 'findings:delete' finding.pk %}" class="bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 transition text-sm">Excluir</a>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 space-y-6">
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex justify-between items-start mb-4">
+                <h2 class="text-lg font-semibold text-gray-700">Descrição</h2>
+                <span class="px-3 py-1 rounded-full text-xs font-medium
+                    {% if finding.classificacao == 'critical' %}bg-red-100 text-red-800
+                    {% elif finding.classificacao == 'high' %}bg-orange-100 text-orange-800
+                    {% elif finding.classificacao == 'medium' %}bg-yellow-100 text-yellow-800
+                    {% else %}bg-green-100 text-green-800{% endif %}">
+                    {{ finding.get_classificacao_display }}
+                </span>
+            </div>
+            <p class="text-sm text-gray-700">{{ finding.description }}</p>
+        </div>
+
+        {% if finding.criterio or finding.condicao or finding.causa or finding.efeito %}
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold text-gray-700 mb-4">Análise</h2>
+            <dl class="space-y-4">
+                {% if finding.criterio %}
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Critério</dt>
+                    <dd class="text-sm text-gray-700">{{ finding.criterio }}</dd>
+                </div>
+                {% endif %}
+                {% if finding.condicao %}
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Condição</dt>
+                    <dd class="text-sm text-gray-700">{{ finding.condicao }}</dd>
+                </div>
+                {% endif %}
+                {% if finding.causa %}
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Causa</dt>
+                    <dd class="text-sm text-gray-700">{{ finding.causa }}</dd>
+                </div>
+                {% endif %}
+                {% if finding.efeito %}
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Efeito</dt>
+                    <dd class="text-sm text-gray-700">{{ finding.efeito }}</dd>
+                </div>
+                {% endif %}
+            </dl>
+        </div>
+        {% endif %}
+
+        {% if finding.recomendacao %}
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold text-gray-700 mb-4">Recomendação</h2>
+            <p class="text-sm text-gray-700">{{ finding.recomendacao }}</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="space-y-6">
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold text-gray-700 mb-4">Evidências</h2>
+            {% if evidences %}
+            <div class="space-y-3">
+                {% for ev in evidences %}
+                <div class="border rounded p-3 text-xs">
+                    <p class="font-medium">{{ ev.document.original_filename }}</p>
+                    <p class="text-gray-500">Página {{ ev.page_number }}</p>
+                    <p class="text-gray-700 mt-1">"{{ ev.captured_text|truncatechars:100 }}"</p>
+                    <div class="flex justify-between items-center mt-2">
+                        <span class="text-gray-400">Hash: {{ ev.hash|truncatechars:12 }}</span>
+                        <form method="post" action="{% url 'findings:evidence_delete' ev.pk %}" class="inline">
+                            {% csrf_token %}
+                            <button type="submit" class="text-red-500 hover:text-red-700">Excluir</button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-gray-500 text-sm">Nenhuma evidência vinculada.</p>
+            {% endif %}
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold text-gray-700 mb-4">Fundamentação Legal</h2>
+            {% if legal_frameworks %}
+            <div class="space-y-2">
+                {% for lf in legal_frameworks %}
+                <div class="border rounded p-2 text-xs">
+                    <p class="font-medium">{{ lf.legal_framework }}</p>
+                    <p class="text-gray-500">{{ lf.legal_framework.ementa|truncatechars:80 }}</p>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-gray-500 text-sm">Nenhuma fundamentação vinculada.</p>
+            {% endif %}
+            <a href="{% url 'findings:update' finding.pk %}" class="text-xs text-blue-600 hover:text-blue-800 mt-2 inline-block">Gerenciar Fundamentação Legal</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,388 @@
+{% extends "base.html" %}
+{% block title %}Visualizador PDF - SABE{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.css">
+<style>
+    #viewer-container {
+        display: flex;
+        height: calc(100vh - 120px);
+        gap: 0;
+    }
+    #pdf-sidebar {
+        width: 55%;
+        position: relative;
+        overflow: hidden;
+        background: #f5f5f5;
+        border-right: 1px solid #ddd;
+        display: flex;
+        flex-direction: column;
+    }
+    #pdf-toolbar {
+        background: #003366;
+        color: white;
+        padding: 8px 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        font-size: 13px;
+    }
+    #pdf-toolbar button, #pdf-toolbar input, #pdf-toolbar select {
+        background: rgba(255,255,255,0.15);
+        color: white;
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 4px;
+        padding: 4px 8px;
+        font-size: 12px;
+    }
+    #pdf-toolbar button:hover {
+        background: rgba(255,255,255,0.3);
+    }
+    #pdf-toolbar input[type="text"] {
+        width: 80px;
+    }
+    #pdf-canvas-container {
+        flex: 1;
+        overflow: auto;
+        padding: 16px;
+        display: flex;
+        justify-content: center;
+    }
+    #pdf-canvas-container canvas {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        background: white;
+    }
+    #text-layer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        overflow: hidden;
+        opacity: 1;
+        line-height: 1.0;
+        pointer-events: auto;
+        color: transparent;
+    }
+    #text-layer > span {
+        position: absolute;
+        white-space: pre;
+        cursor: text;
+        transform-origin: 0% 0%;
+        color: transparent;
+    }
+    #text-layer > span::selection {
+        background: rgba(59, 130, 246, 0.5);
+        color: transparent;
+    }
+    #text-layer ::selection {
+        background: rgba(59, 130, 246, 0.5);
+    }
+    .selected-text-highlight {
+        background: rgba(255, 255, 0, 0.4);
+        position: absolute;
+        pointer-events: none;
+    }
+    #text-layer > span::selection {
+        background: rgba(59, 130, 246, 0.6);
+    }
+    #sidebar-right {
+        width: 45%;
+        overflow-y: auto;
+        padding: 16px;
+        background: white;
+    }
+    #sidebar-right h3 {
+        font-weight: 600;
+        color: #003366;
+        margin-bottom: 8px;
+        font-size: 14px;
+        border-bottom: 2px solid #C9A84C;
+        padding-bottom: 4px;
+    }
+    .selected-text-highlight {
+        background: rgba(255, 255, 0, 0.4);
+        position: absolute;
+        pointer-events: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="viewer-container">
+    <div id="pdf-sidebar">
+        <div id="pdf-toolbar">
+            <button onclick="zoomOut()">−</button>
+            <span id="zoom-level">100%</span>
+            <button onclick="zoomIn()">+</button>
+            <span class="text-gray-300 mx-1">|</span>
+            <button onclick="goPrevPage()"> < </button>
+            <span id="page-indicator">Página <span id="page-num">1</span> de <span id="page-count">1</span></span>
+            <button onclick="goNextPage()">></button>
+            <span class="text-gray-300 mx-1">|</span>
+            <input type="text" id="search-input" placeholder="Buscar no PDF...">
+            <button onclick="searchText()">🔍</button>
+            <span id="search-results" class="text-xs"></span>
+        </div>
+        <div id="pdf-canvas-container">
+            <div style="position:relative;display:inline-block;line-height:0;vertical-align:top">
+                <canvas id="pdf-canvas" style="display:block"></canvas>
+                <div id="text-layer"></div>
+            </div>
+        </div>
+    </div>
+    <div id="sidebar-right">
+        <div class="mb-6">
+            <h3>Documento</h3>
+            <p class="text-sm text-gray-700">{{ document.original_filename }}</p>
+            <p class="text-xs text-gray-500">Auditoria: {{ audit.numero }}/{{ audit.exercicio }}</p>
+        </div>
+
+        <div class="mb-6">
+            <h3>Achados Disponíveis</h3>
+            <select id="finding-select" class="w-full text-sm border rounded p-2 mt-1">
+                <option value="">Selecione um achado...</option>
+                {% for f in audit.findings.all %}
+                <option value="{{ f.id }}">{{ f.title }}</option>
+                {% endfor %}
+            </select>
+            <a href="{% url 'findings:create' audit.pk %}" class="text-xs text-blue-600 hover:text-blue-800 mt-1 inline-block">+ Novo Achado</a>
+        </div>
+
+        <div class="mb-6">
+            <h3>Seleção de Texto</h3>
+            <p class="text-xs text-gray-500 mb-2">Selecione um texto no PDF ao lado e clique em "Capturar Evidência".</p>
+            <form id="evidence-form" method="post" action="{% url 'findings:evidence_create' %}">
+                {% csrf_token %}
+                <input type="hidden" name="document_id" value="{{ document.id }}">
+                <input type="hidden" name="finding_id" id="evidence-finding-id">
+                <input type="hidden" name="page_number" id="evidence-page">
+                <input type="hidden" name="captured_text" id="evidence-text">
+                <input type="hidden" name="coordinates" id="evidence-coords">
+                <div class="mb-2">
+                    <textarea id="selected-text-display" rows="4" class="w-full text-xs border rounded p-2 bg-gray-50"
+                              placeholder="O texto selecionado aparecerá aqui..." readonly></textarea>
+                </div>
+                <button type="button" onclick="captureEvidence()" class="w-full bg-tce-blue text-white px-3 py-2 rounded-lg hover:bg-blue-800 transition text-sm font-medium">
+                    Capturar Evidência
+                </button>
+            </form>
+        </div>
+
+        <div id="recent-evidences">
+            <h3>Evidências Recentes</h3>
+            <div id="evidences-list" class="space-y-2 mt-2">
+                <p class="text-xs text-gray-500">Nenhuma evidência capturada nesta sessão.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    let pdfDoc = null;
+    let pageNum = 1;
+    let pageIsRendering = false;
+    let pageNumIsPending = null;
+    let scale = 1.5;
+    let currentSelection = '';
+    let currentCoords = {};
+
+    const canvas = document.getElementById('pdf-canvas');
+    const ctx = canvas.getContext('2d');
+
+    function loadPDF(url) {
+        const loadingTask = pdfjsLib.getDocument(url);
+        loadingTask.promise.then(function(pdf) {
+            pdfDoc = pdf;
+            document.getElementById('page-count').textContent = pdf.numPages;
+            renderPage(pageNum);
+        }).catch(function(error) {
+            console.error('Erro ao carregar PDF:', error);
+        });
+    }
+
+    function renderPage(num) {
+        pageIsRendering = true;
+        var currentViewport = null;
+        pdfDoc.getPage(num).then(function(page) {
+            currentViewport = page.getViewport({scale: scale});
+            canvas.height = currentViewport.height;
+            canvas.width = currentViewport.width;
+            canvas.style.height = currentViewport.height + 'px';
+            canvas.style.width = currentViewport.width + 'px';
+
+            const renderContext = {
+                canvasContext: ctx,
+                viewport: currentViewport
+            };
+
+            const renderTask = page.render(renderContext);
+            renderTask.promise.then(function() {
+                pageIsRendering = false;
+                if (pageNumIsPending !== null) {
+                    renderPage(pageNumIsPending);
+                    pageNumIsPending = null;
+                }
+            });
+
+            document.getElementById('page-num').textContent = num;
+            document.getElementById('evidence-page').value = num;
+
+            return page.getTextContent();
+        }).then(function(textContent) {
+            const textLayer = document.getElementById('text-layer');
+            textLayer.innerHTML = '';
+                textContent.items.forEach(function(item, idx) {
+                const tx = pdfjsLib.Util.transform(
+                    currentViewport.transform,
+                    item.transform
+                );
+                if (idx < 3) {
+                    const dot = document.createElement('div');
+                    dot.style.cssText = 'position:absolute;width:4px;height:4px;background:red;border-radius:50%;z-index:999;pointer-events:none';
+                    dot.style.left = Math.round(tx[4]) + 'px';
+                    dot.style.top = Math.round(tx[5]) + 'px';
+                    document.getElementById('text-layer').appendChild(dot);
+                }
+                const span = document.createElement('span');
+                span.textContent = item.str;
+                span.style.left = Math.round(tx[4]) + 'px';
+                span.style.top = Math.round(tx[5]) + 'px';
+                span.style.fontSize = Math.round(Math.abs(tx[3])) + 'px';
+                span.style.fontFamily = 'sans-serif';
+                textLayer.appendChild(span);
+            });
+        });
+    }
+
+    function queueRenderPage(num) {
+        if (pageIsRendering) {
+            pageNumIsPending = num;
+        } else {
+            renderPage(num);
+        }
+    }
+
+    function goPrevPage() {
+        if (pageNum <= 1) return;
+        pageNum--;
+        queueRenderPage(pageNum);
+    }
+
+    function goNextPage() {
+        if (pageNum >= pdfDoc.numPages) return;
+        pageNum++;
+        queueRenderPage(pageNum);
+    }
+
+    function zoomIn() {
+        scale += 0.25;
+        document.getElementById('zoom-level').textContent = Math.round(scale * 100 / 1.5) + '%';
+        queueRenderPage(pageNum);
+    }
+
+    function zoomOut() {
+        if (scale <= 0.5) return;
+        scale -= 0.25;
+        document.getElementById('zoom-level').textContent = Math.round(scale * 100 / 1.5) + '%';
+        queueRenderPage(pageNum);
+    }
+
+    function searchText() {
+        const query = document.getElementById('search-input').value.trim().toLowerCase();
+        if (!query) return;
+
+        let found = false;
+        const spans = document.querySelectorAll('#text-layer span');
+        spans.forEach(function(span) {
+            span.style.background = '';
+            if (span.textContent.toLowerCase().includes(query)) {
+                span.style.background = 'rgba(255, 255, 0, 0.5)';
+                found = true;
+            }
+        });
+        document.getElementById('search-results').textContent = found ? '' : 'Nenhum resultado';
+    }
+
+    document.addEventListener('mouseup', function() {
+        const selection = window.getSelection();
+        const text = selection.toString().trim();
+        if (text) {
+            currentSelection = text;
+            document.getElementById('selected-text-display').value = text;
+            document.getElementById('evidence-text').value = text;
+
+            const range = selection.getRangeAt(0);
+            const rect = range.getBoundingClientRect();
+            const canvasRect = canvas.getBoundingClientRect();
+            currentCoords = {
+                x: Math.round(rect.left - canvasRect.left),
+                y: Math.round(rect.top - canvasRect.top),
+                width: Math.round(rect.width),
+                height: Math.round(rect.height),
+                page: pageNum
+            };
+            document.getElementById('evidence-coords').value = JSON.stringify(currentCoords);
+        }
+    });
+
+    function captureEvidence() {
+        const findingId = document.getElementById('finding-select').value;
+        if (!findingId) {
+            alert('Selecione um achado para vincular a evidência.');
+            return;
+        }
+        if (!currentSelection) {
+            alert('Selecione um texto no PDF primeiro.');
+            return;
+        }
+
+        document.getElementById('evidence-finding-id').value = findingId;
+
+        const form = document.getElementById('evidence-form');
+        const formData = new FormData(form);
+
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.id) {
+                const list = document.getElementById('evidences-list');
+                if (list.querySelector('.text-xs.text-gray-500')) {
+                    list.innerHTML = '';
+                }
+                const div = document.createElement('div');
+                div.className = 'bg-gray-50 rounded p-2 text-xs border';
+                div.innerHTML = `
+                    <strong>Pág ${data.page_number}:</strong> ${data.captured_text}...
+                    <span class="text-gray-400 block mt-1">Hash: ${data.hash.substring(0, 12)}...</span>
+                `;
+                list.prepend(div);
+                document.getElementById('selected-text-display').value = '';
+                document.getElementById('evidence-text').value = '';
+                currentSelection = '';
+                alert('Evidência capturada com sucesso!');
+            } else {
+                alert('Erro ao capturar evidência.');
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao capturar evidência.');
+        });
+    }
+
+    loadPDF('{{ pdf_url }}');
+</script>
+{% endblock %}

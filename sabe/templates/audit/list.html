@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Auditorias - SABE{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+    <h1 class="text-2xl font-bold text-gray-800">Auditorias</h1>
+    <a href="{% url 'audit:create' %}" class="bg-tce-blue text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition text-sm font-medium">
+        + Nova Auditoria
+    </a>
+</div>
+
+<form method="get" class="mb-6 flex gap-4">
+    <input type="text" name="search" value="{{ request.GET.search|default:'' }}"
+           placeholder="Buscar auditorias..." 
+           class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+    <select name="status" class="px-4 py-2 border border-gray-300 rounded-lg text-sm">
+        <option value="">Todos os status</option>
+        <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>Ativa</option>
+        <option value="closed" {% if request.GET.status == 'closed' %}selected{% endif %}>Encerrada</option>
+    </select>
+    <button type="submit" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition text-sm">
+        Buscar
+    </button>
+</form>
+
+<div class="bg-white rounded-lg shadow overflow-hidden">
+    <table class="w-full text-sm">
+        <thead class="bg-gray-50 text-gray-600 uppercase text-xs">
+            <tr>
+                <th class="px-4 py-3 text-left">Número</th>
+                <th class="px-4 py-3 text-left">Unidade Jurisdicionada</th>
+                <th class="px-4 py-3 text-left">Responsável</th>
+                <th class="px-4 py-3 text-center">Início</th>
+                <th class="px-4 py-3 text-center">Status</th>
+                <th class="px-4 py-3 text-center">Ações</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+            {% for audit in audits %}
+            <tr class="hover:bg-gray-50">
+                <td class="px-4 py-3 font-medium">
+                    <a href="{% url 'audit:detail' audit.pk %}" class="text-blue-700 hover:text-blue-900">
+                        {{ audit.numero }}/{{ audit.exercicio }}
+                    </a>
+                </td>
+                <td class="px-4 py-3">{{ audit.unidade_jurisdicionada }}</td>
+                <td class="px-4 py-3">{{ audit.responsavel }}</td>
+                <td class="px-4 py-3 text-center">{{ audit.data_inicio|date:"d/m/Y" }}</td>
+                <td class="px-4 py-3 text-center">
+                    <span class="px-2 py-1 rounded-full text-xs font-medium
+                        {% if audit.status == 'active' %}bg-green-100 text-green-800
+                        {% else %}bg-gray-100 text-gray-800{% endif %}">
+                        {{ audit.get_status_display }}
+                    </span>
+                </td>
+                <td class="px-4 py-3 text-center space-x-1">
+                    <a href="{% url 'audit:detail' audit.pk %}" class="text-blue-600 hover:text-blue-800 text-xs">Detalhes</a>
+                    <a href="{% url 'audit:update' audit.pk %}" class="text-green-600 hover:text-green-800 text-xs">Editar</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="px-4 py-8 text-center text-gray-500">Nenhuma auditoria encontrada.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if page_obj.has_other_pages %}
+<div class="mt-4 flex justify-center gap-2">
+    {% if page_obj.has_previous %}
+    <a href="?page={{ page_obj.previous_page_number }}&search={{ request.GET.search|default:'' }}&status={{ request.GET.status|default:'' }}"
+       class="px-3 py-1 bg-gray-200 rounded text-sm hover:bg-gray-300">Anterior</a>
+    {% endif %}
+    <span class="px-3 py-1 text-sm text-gray-600">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}&search={{ request.GET.search|default:'' }}&status={{ request.GET.status|default:'' }}"
+       class="px-3 py-1 bg-gray-200 rounded text-sm hover:bg-gray-300">Próxima</a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}
